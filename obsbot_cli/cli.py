@@ -3,6 +3,11 @@ import click
 from rich.console import Console
 import inquirer
 import sys
+from obsbot_cli.commands.quick_setup import QuickSetupCommands
+from obsbot_cli.commands.camera import CameraCommands  # Add this importfrom obsbot_cli.commands.preview import PreviewCommands
+from obsbot_cli.commands.preview import PreviewCommands
+
+
 
 console = Console()
 
@@ -14,6 +19,13 @@ def print_header():
 def main(device):
     """Interactive OBSBOT Camera Control"""
     print_header()
+    
+    # Initialize command handlers
+    quick_setup = QuickSetupCommands(device)
+    camera = CameraCommands(device)  # Add this linepreview = PreviewCommands(device)
+    preview = PreviewCommands(device)
+
+
     
     try:
         while True:
@@ -32,7 +44,6 @@ def main(device):
             
             result = inquirer.prompt(questions)
             
-            # Handle Ctrl+C or cancellation
             if result is None:
                 console.print("\n[yellow]Goodbye![/yellow]")
                 sys.exit(0)
@@ -42,8 +53,14 @@ def main(device):
             if action == 'Exit':
                 console.print("[yellow]Goodbye![/yellow]")
                 break
-                
-            console.print(f"Selected: {action}")
+            elif action == 'Quick Setup':
+                quick_setup.handle()
+            elif action == 'Test Movement':  # Add this block
+                camera.test_movement()
+            elif action == 'Preview':
+                preview.start_preview()
+                input("[yellow]Press Enter to stop preview...[/yellow]")
+                preview.stop_preview()
 
     except KeyboardInterrupt:
         console.print("\n[yellow]Goodbye![/yellow]")

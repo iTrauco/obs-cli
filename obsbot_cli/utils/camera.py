@@ -2,74 +2,81 @@
 import subprocess
 import json
 from pathlib import Path
-from obsbot_cli.config.settings import PRESET_FILE
+from rich.console import Console
 
-class CameraController:
-    def __init__(self, device):
-        self.device = device
-        self._load_presets()
+console = Console()
+
+class CameraManager:
+    """🎥 Camera device management and discovery utilities"""
     
-    def _load_presets(self):
-        """Load saved presets"""
-        self.presets = {}
-        if Path(PRESET_FILE).exists():
-            with open(PRESET_FILE, 'r') as f:
-                self.presets = json.load(f)
-    
-    def _save_presets(self):
-        """Save presets to file"""
-        with open(PRESET_FILE, 'w') as f:
-            json.dump(self.presets, f)
-    
-    def set_control(self, control, value):
-        """Set a camera control"""
-        cmd = ['sudo', 'v4l2-ctl', '-d', self.device, f'--set-ctrl={control}={value}']
-        subprocess.run(cmd, check=True)
-    
-    def set_pan(self, value):
-        self.set_control('pan_absolute', value)
-    
-    def set_tilt(self, value):
-        self.set_control('tilt_absolute', value)
-    
-    def set_zoom(self, value):
-        self.set_control('zoom_absolute', value)
-    
-    def center(self):
-        """Center all camera controls"""
-        self.set_pan(0)
-        self.set_tilt(0)
-        self.set_zoom(0)
-    
-    def start_preview(self):
-        """Start camera preview"""
-        subprocess.Popen(['vlc', f'v4l2://{self.device}'])
-    
-    def presentation_mode(self):
-        """Set up for presentation"""
-        self.set_zoom(50)
-        self.center()
-    
-    def meeting_mode(self):
-        """Set up for meeting"""
-        self.set_zoom(30)
-        self.center()
-    
-    def wide_room_mode(self):
-        """Set up for wide room view"""
-        self.set_zoom(0)
-        self.center()
-    
-    def test_movement(self):
-        """Run a movement test pattern"""
-        # Pan left to right
-        self.set_pan(-100000)
-        self.set_pan(100000)
-        self.set_pan(0)
-        # Tilt up and down
-        self.set_tilt(-100000)
-        self.set_tilt(100000)
-        self.set_tilt(0)
-        # Zoom in and out
-        self.set_zoom(100)
-        self.set_zoom(0)
+    @staticmethod
+    def list_obsbot_devices():
+        """📝 List all OBSBOT camera devices"""
+        try:
+            cmd = ['v4l2-ctl', '--list-devices']
+            result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            
+            devices = []
+            current_device = None
+            
+            for line in result.stdout.splitlines():
+                if 'OBSBOT' in line:
+                    current_device = {
+                        'name': line.strip().split(':')[0],
+                        'devices': []
+                    }
+                elif current_device and '/dev/video' in line:
+                    current_device['devices'].append(line.strip())
+                elif current_device:
+                    devices.append(current_device)
+                    current_device = None
+                    
+            if current_device:
+                devices.append(current_device)
+                
+            return devices
+        except subprocess.CalledProcessError as e:
+            console.print("[red]Error listing devices:[/red]", e.stderr)
+            return []
+
+    @staticmethod
+    def verify_device(device_path):
+        """✅ Verify if device exists and is accessible"""
+        try:
+            cmd = ['v4l2-ctl', '-d', device_path, '--all']
+            subprocess.run(cmd, capture_output=True, check=True)
+            return True
+        except subprocess.CalledProcessError:
+            return False
+
+    @staticmethod
+    def get_device_capabilities(device_path):
+        """💡 Get device capabilities and supported controls"""
+        try:
+            # Get controls
+            cmd = ['v4l2-ctl', '-d', device_path, '--list-ctrls']
+            controls = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            
+            # Get formats
+            cmd = ['v4l2-ctl', '-d', device_path, '--list-formats-ext']
+            formats = subprocess.run(cmd, capture_output=True, text=True, check=True)
+            
+            return {
+                'controls': controls.stdout,
+                'formats': formats.stdout
+            }
+        except subprocess.CalledProcessError as e:
+            console.print("[red]Error getting device capabilities:[/red]", e.stderr)
+            return None
+
+    @staticmethod
+    def setup_device_permissions(device_path):
+        """🔐 Set up proper device permissions"""
+        try:
+            # Make device readable/writable
+            subprocess.run(['sudo', 'chmod', '666', device_path], check=True)
+            console.print(f"[green]Set permissions for {device_path}[/green]")
+            return True
+        except subprocess.CalledProcessError as e:
+            console.print(f"[red]Error setting permissions: {e}[/red]")
+            return False
