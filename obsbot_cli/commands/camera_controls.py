@@ -231,35 +231,58 @@ class CameraControlCommands:
             self.handle_custom_zoom()
 
     def handle_step_movement(self, control_type, is_pan, movement, current_pos):
-        """Handle step-based movement"""
+        """Handle step-based movement with recursive direction selection
+        
+        Args:
+            control_type (str): Type of control ('pan' or 'tilt')
+            is_pan (bool): Whether the control is for pan movement
+            movement (str): Selected movement step size
+            current_pos (dict): Current camera position
+        """
+        # Extract step size from movement string
         degrees = float(movement.split('(')[1].split('°')[0].strip('±'))
-
-        direction_result = inquirer.prompt([
-            inquirer.List('direction',
-                message="Select direction",
-                choices=[
-                    f'{"Left" if is_pan else "Up"} (-{degrees}°)',
-                    f'{"Right" if is_pan else "Down"} (+{degrees}°)',
-                    'Back'
-                ]
-            )
-        ])
-
-        if not direction_result or direction_result['direction'] == 'Back':
-            return
-
-        degrees = degrees if '+' in direction_result['direction'] else -degrees
-        current = self._to_degrees(current_pos[control_type], control_type)
-        new_degrees = current + degrees
-
-        if -180 <= new_degrees <= 180:
-            value = self._from_degrees(new_degrees, control_type)
-            if is_pan:
-                self.camera.controller.set_pan(value)
+        
+        while True:  # Add loop for recursive direction selection
+            # Get current position for updated feedback
+            current_pos = self.camera.controller.get_current_position()
+            current_angle = self._to_degrees(current_pos[control_type], control_type)
+            
+            # Show current position before each movement
+            console.print(f"\n[blue]Current {control_type}: {current_angle:>6.1f}°[/blue]")
+            
+            direction_result = inquirer.prompt([
+                inquirer.List('direction',
+                    message=f"Select {control_type} direction (current: {current_angle:>6.1f}°)",
+                    choices=[
+                        f'{"Left" if is_pan else "Up"} (-{degrees}°)',
+                        f'{"Right" if is_pan else "Down"} (+{degrees}°)',
+                        'Back to Step Selection'
+                    ]
+                )
+            ])
+            
+            # Check for exit condition
+            if not direction_result or direction_result['direction'] == 'Back to Step Selection':
+                break
+            
+            # Calculate movement amount based on direction
+            move_degrees = degrees if '+' in direction_result['direction'] else -degrees
+            new_degrees = current_angle + move_degrees
+            
+            # Validate movement within bounds
+            if -180 <= new_degrees <= 180:
+                # Convert degrees to raw value and apply movement
+                value = self._from_degrees(new_degrees, control_type)
+                if is_pan:
+                    self.camera.controller.set_pan(value)
+                else:
+                    self.camera.controller.set_tilt(value)
             else:
-                self.camera.controller.set_tilt(value)
-        else:
-            console.print("[red]Movement would exceed limits[/red]")
+                console.print("[red]Movement would exceed limits[/red]")
+                continue  # Continue loop even if movement fails
+            
+            # Brief pause to allow movement to complete
+            time.sleep(0.1)
 
     def handle_custom_zoom(self):
         """Handle custom zoom value input"""
