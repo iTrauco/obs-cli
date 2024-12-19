@@ -202,36 +202,89 @@ class CameraControlCommands:
                 self.handle_custom_movement(control_type, is_pan, current_pos)
 
     def handle_zoom_control(self, current_pos):
-        """Handle zoom adjustments"""
-        zoom_result = inquirer.prompt([
-            inquirer.List('movement',
-                message="Select zoom adjustment",
-                choices=[
-                    '🔍 Zoom In (+10%)',
-                    '🔍 Zoom In (+5%)',
-                    '🔍 Zoom Out (-5%)',
-                    '🔍 Zoom Out (-10%)',
-                    '📏 Custom Value (0-100%)',
-                    '↩️ Back'
-                ]
-            )
-        ])
+        """Handle zoom adjustments with recursive selection and preserved choice
+        
+        Args:
+            current_pos (dict): Current camera position containing zoom value
+        """
+        # Track the last selected zoom option
+        last_choice = 0  # Default to first option
+        
+        while True:  # Loop for recursive zoom adjustment
+            # Get current position for updated feedback
+            current_pos = self.camera.controller.get_current_position()
+            
+            # Show current zoom before each adjustment
+            console.print(f"\n[blue]Current Zoom: {current_pos['zoom']}%[/blue]")
+            
+            # Create zoom choices
+            choices = [
+                '🔍 Zoom In (+10%)',
+                '🔍 Zoom In (+5%)',
+                '🔍 Zoom Out (-5%)',
+                '🔍 Zoom Out (-10%)',
+                '📏 Custom Value (0-100%)',
+                '↩️ Back to Control Menu'
+            ]
+            
+            zoom_result = inquirer.prompt([
+                inquirer.List('movement',
+                    message=f"Select zoom adjustment (current: {current_pos['zoom']}%)",
+                    choices=choices,
+                    default=choices[last_choice]  # Set default to last selected option
+                )
+            ])
 
-        if not zoom_result or zoom_result['movement'] == '↩️ Back':
-            return
+            if not zoom_result or zoom_result['movement'] == '↩️ Back to Control Menu':
+                break
+                
+            # Update last_choice based on selection
+            last_choice = choices.index(zoom_result['movement'])
 
-        if 'Custom' not in zoom_result['movement']:
-            change = int(zoom_result['movement'].split('(')[1].split('%')[0])
-            new_zoom = current_pos['zoom'] + change
-            if 0 <= new_zoom <= 100:
-                self.camera.controller.set_zoom(new_zoom)
+            if '📏 Custom Value' not in zoom_result['movement']:
+                # Extract zoom change value from the selected option
+                change = int(zoom_result['movement'].split('(')[1].split('%')[0])
+                new_zoom = current_pos['zoom'] + change
+                
+                # Validate zoom bounds
+                if 0 <= new_zoom <= 100:
+                    self.camera.controller.set_zoom(new_zoom)
+                else:
+                    console.print("[red]Zoom value would exceed limits (0-100%)[/red]")
             else:
-                console.print("[red]Zoom value would exceed limits[/red]")
-        else:
-            self.handle_custom_zoom()
+                # Handle custom zoom value input
+                self.handle_custom_zoom()
+                # Reset last_choice after custom input to default selection
+                last_choice = 0
+                
+            # Brief pause to allow zoom to adjust
+            time.sleep(0.1)
 
+    def handle_custom_zoom(self):
+        """Handle custom zoom value input"""
+        while True:
+            value_result = inquirer.prompt([
+                inquirer.Text('value',
+                    message="Enter zoom percentage (0-100%):",
+                    validate=lambda _, x: x.isdigit() and 0 <= int(x) <= 100,
+                    invalid_message="Please enter a valid number between 0 and 100"
+                )
+            ])
+
+            if not value_result:
+                break
+
+            try:
+                zoom = int(value_result['value'])
+                self.camera.controller.set_zoom(zoom)
+                break
+            except Exception as e:
+                console.print(f"[red]Error setting zoom: {e}[/red]")
+                break
+
+ 
     def handle_step_movement(self, control_type, is_pan, movement, current_pos):
-        """Handle step-based movement with recursive direction selection
+        """Handle step-based movement with recursive direction selection and preserved choice
         
         Args:
             control_type (str): Type of control ('pan' or 'tilt')
@@ -242,7 +295,10 @@ class CameraControlCommands:
         # Extract step size from movement string
         degrees = float(movement.split('(')[1].split('°')[0].strip('±'))
         
-        while True:  # Add loop for recursive direction selection
+        # Track the last selected direction to preserve selection
+        last_choice = 0  # Default to first option
+        
+        while True:  # Loop for recursive direction selection
             # Get current position for updated feedback
             current_pos = self.camera.controller.get_current_position()
             current_angle = self._to_degrees(current_pos[control_type], control_type)
@@ -250,20 +306,27 @@ class CameraControlCommands:
             # Show current position before each movement
             console.print(f"\n[blue]Current {control_type}: {current_angle:>6.1f}°[/blue]")
             
+            # Create direction choices
+            choices = [
+                f'{"Left" if is_pan else "Up"} (-{degrees}°)',
+                f'{"Right" if is_pan else "Down"} (+{degrees}°)',
+                'Back to Step Selection'
+            ]
+            
             direction_result = inquirer.prompt([
                 inquirer.List('direction',
                     message=f"Select {control_type} direction (current: {current_angle:>6.1f}°)",
-                    choices=[
-                        f'{"Left" if is_pan else "Up"} (-{degrees}°)',
-                        f'{"Right" if is_pan else "Down"} (+{degrees}°)',
-                        'Back to Step Selection'
-                    ]
+                    choices=choices,
+                    default=choices[last_choice]  # Set default to last selected option
                 )
             ])
             
             # Check for exit condition
             if not direction_result or direction_result['direction'] == 'Back to Step Selection':
                 break
+                
+            # Update last_choice based on selection
+            last_choice = choices.index(direction_result['direction'])
             
             # Calculate movement amount based on direction
             move_degrees = degrees if '+' in direction_result['direction'] else -degrees
