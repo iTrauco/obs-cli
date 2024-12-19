@@ -58,9 +58,10 @@ def main(device):
             elif action == 'Test Movement':  # Add this block
                 camera.test_movement()
             elif action == 'Preview':
+                # Start preview without waiting
                 preview.start_preview()
-                input("[yellow]Press Enter to stop preview...[/yellow]")
-                preview.stop_preview()
+                console.print("[green]Preview running in background - you can continue using the menu[/green]")
+
 
     except KeyboardInterrupt:
         console.print("\n[yellow]Goodbye![/yellow]")
