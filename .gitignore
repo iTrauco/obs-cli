@@ -1,0 +1,143 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+env/
+build/
+dist/
+*.egg-info/
+*.eggs/
+*.wheel
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+*.cover
+*.py,cover
+coverage.xml
+*.log
+
+# Translations
+*.mo
+*.pot
+
+# Django stuff:
+*.log
+local_settings.py
+
+# Flask stuff:
+instance/
+.webassets-cache
+
+# Scrapy stuff:
+.scrapy
+
+# Sphinx documentation
+docs/_build/
+
+# PyBuilder
+target/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+*.nbconvert
+
+# pyenv
+.python-version
+
+# virtualenv
+venv/
+ENV/
+.env/
+
+# Spyder project settings
+.spyderproject
+.spyderproject/config
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+
+# PyCharm
+.idea/
+*.iml
+
+# VSCode
+.vscode/
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+*.out
+*.err
+
+# Ignore secrets
+*.env
+.secret
+
+# Data Science Artifacts
+*.csv
+*.tsv
+*.json
+*.xls
+*.xlsx
+*.parquet
+*.hdf5
+*.feather
+*.pickle
+
+# Machine Learning Artifacts
+model/
+*.h5
+*.ckpt
+*.pb
+*.tflite
+*.onnx
+*.pt
+*.pth
+
+# TensorFlow
+checkpoint
+__pycache__/checkpoint
+*.index
+*.data*
+*.meta
+
+# PyTorch
+*.pt
+*.pth
+
+# ML Experiment Logs
+mlruns/
+*.log
+wandb/
+
+# Temporary files and backups
+*.bak
+~*
+*.swp
+*.swo
+.*.sw?
+
