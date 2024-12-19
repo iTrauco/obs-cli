@@ -6,6 +6,8 @@ import sys
 from obsbot_cli.commands.quick_setup import QuickSetupCommands
 from obsbot_cli.commands.camera import CameraCommands  # Add this importfrom obsbot_cli.commands.preview import PreviewCommands
 from obsbot_cli.commands.preview import PreviewCommands
+from obsbot_cli.commands.camera_controls import CameraControlCommands
+
 
 
 
@@ -24,6 +26,8 @@ def main(device):
     quick_setup = QuickSetupCommands(device)
     camera = CameraCommands(device)  # Add this linepreview = PreviewCommands(device)
     preview = PreviewCommands(device)
+    camera_controls = CameraControlCommands(device)
+
 
 
     
@@ -59,6 +63,10 @@ def main(device):
                 camera.test_movement()
             elif action == 'Preview':
                 preview.handle()
+            # Add in the action handlers section:
+            elif action == 'Camera Controls':
+                camera_controls.handle()
+
 
 
     except KeyboardInterrupt:
